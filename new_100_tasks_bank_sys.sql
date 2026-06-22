@@ -1,468 +1,521 @@
 -- ============================================================
+-- REAL BANK SYSTEM — 100 TASK (YANGI, OXSHAMAYDI)
+-- ============================================================
+
+-- ============================================================
 -- VIEW (1-25)
 -- ============================================================
 
--- TASK 1 — Weekly active users VIEW
+-- TASK 1 — account_opening_trends VIEW
 -- Создать VIEW:
--- * активные пользователи за неделю
--- * количество операций
--- * средняя сумма транзакции
+-- * количество открытых счетов по месяцам
+-- * средний начальный баланс
+-- * статус счетов
 
--- TASK 2 — Top spenders VIEW
--- Создать VIEW:
--- * топ клиентов по расходам
--- * общая сумма трат
--- * категории расходов
+-- PARAMETER
+-- TABLE: accounts
 
--- TASK 3 — Merchant volume VIEW
+-- 1. accounts jadvalidan account ochilgan sanani olish
+-- 2. Account ochilgan oy bo‘yicha guruhlash
+-- 3. Har bir oyda ochilgan accountlar sonini hisoblash
+-- 4. Har bir oy uchun o‘rtacha boshlang‘ich balansni hisoblash
+-- 5. Account statuslarini aniqlash
+-- 6. Status bo‘yicha accountlar taqsimotini chiqarish
+-- 7. NULL qiymatlarni COALESCE orqali 0 ga aylantirish
+-- 8. Natijani quyidagi ustunlarda chiqarish:
+--    opening_month
+--    account_count
+--    avg_initial_balance
+--    account_status
+-- 9. Opening month bo‘yicha GROUP BY qilish
+-- 10. Natijani oy bo‘yicha tartiblash
+
+
+create view account_opening_trends as 
+SELECT format(a.created_at, 'yyyy-MM'), count(a.id),avg(a.balance), a.status  from accounts a 
+GROUP BY FORMAT(a.created_at, 'yyyy-MM'), a.status
+
+
+
+-- TASK 2 — customer_contact_frequency VIEW
 -- Создать VIEW:
--- * обороты по мерчантам
+-- * частота входов в систему
+-- * последний вход
+-- * общее количество сессий
+
+-- PARAMETER
+-- TABLE: customers, login_sessions
+
+-- 1. customers jadvalini login_sessions jadvali bilan JOIN qilish
+-- 2. Har bir customer uchun login sonini hisoblash
+-- 3. Har bir customer uchun oxirgi login sanasini topish
+-- 4. Har bir customer uchun umumiy sessiyalar sonini hisoblash
+-- 5. Login frequency ko‘rsatkichini hisoblash
+-- 6. NULL qiymatlarni COALESCE orqali 0 ga aylantirish
+-- 7. Customer_id bo‘yicha GROUP BY qilish
+-- 8. Natijada quyidagi ustunlarni chiqarish:
+--    customer_id
+--    full_name
+--    login_frequency
+--    last_login_date
+--    total_sessions
+-- 9. Natijani customer_id bo‘yicha tartiblash
+
+create view customer_contact_frequency as 
+select c.id, c.full_name, count(lg.id),max(lg.created_at )   from customers c  join login_history lg on lg.customer_id=c.id 
+GROUP by c.id, c.full_name 
+
+
+
+-- TASK 3 — notification_delivery_stats VIEW
+-- Создать VIEW:
+-- * доставленные уведомления
+-- * прочитанные уведомления
+-- * процент прочтения
+
+-- TASK 4 — loan_repayment_history VIEW
+-- Создать VIEW:
+-- * история платежей по кредитам
+-- * сумма платежа
+-- * дата платежа
+
+-- TASK 5 — account_freeze_events VIEW
+-- Создать VIEW:
+-- * замороженные счета
+-- * причина заморозки
+-- * продолжительность заморозки
+
+-- TASK 6 — failed_login_attempts VIEW
+-- Создать VIEW:
+-- * неудачные попытки входа
+-- * IP адреса
+-- * устройства
+
+-- TASK 7 — high_balance_accounts VIEW
+-- Создать VIEW:
+-- * счета с высоким балансом (>10000)
+-- * валюта счета
+-- * статус
+
+-- TASK 8 — recent_transactions VIEW
+-- Создать VIEW:
+-- * последние 100 транзакций
+-- * тип транзакции
+-- * сумма
+
+-- TASK 9 — card_expiry_warnings VIEW
+-- Создать VIEW:
+-- * карты с истекающим сроком (30 дней)
+-- * статус карты
+-- * владелец счета
+
+-- TASK 10 — beneficiary_statistics VIEW
+-- Создать VIEW:
+-- * количество получателей у клиента
+-- * никнеймы получателей
+-- * дата добавления
+
+-- TASK 11 — daily_transaction_volume VIEW
+-- Создать VIEW:
+-- * ежедневный объем транзакций
 -- * количество транзакций
--- * средний чек
+-- * средняя сумма
 
--- TASK 4 — Device usage VIEW
+-- TASK 12 — customer_risk_distribution VIEW
 -- Создать VIEW:
--- * типы устройств
--- * количество сессий
--- * популярность ОС
-
--- TASK 5 — Hourly activity VIEW
--- Создать VIEW:
--- * почасовая активность
--- * пиковые часы
--- * количество операций
-
--- TASK 6 — City wise distribution VIEW
--- Создать VIEW:
--- * распределение по городам
--- * количество клиентов
--- * объем транзакций
-
--- TASK 7 — Age group analytics VIEW
--- Создать VIEW:
--- * возрастные группы
+-- * распределение risk_score
 -- * количество клиентов
 -- * средний баланс
 
--- TASK 8 — Gender based spending VIEW
+-- TASK 13 — currency_usage VIEW
 -- Создать VIEW:
--- * траты по полу
--- * средняя сумма
--- * популярные категории
+-- * популярность валют
+-- * количество счетов
+-- * общий баланс
 
--- TASK 9 — Referral performance VIEW
+-- TASK 14 — loan_status_distribution VIEW
 -- Создать VIEW:
--- * эффективность рефералов
--- * количество привлеченных
--- * бонусы
+-- * активные кредиты
+-- * закрытые кредиты
+-- * общая сумма
 
--- TASK 10 — Campaign effectiveness VIEW
+-- TASK 15 — account_creation_by_month VIEW
 -- Создать VIEW:
--- * эффективность кампаний
--- * конверсия
--- * ROI
+-- * счета по месяцам
+-- * количество
+-- * статус
 
--- TASK 11 — Seasonal trends VIEW
+-- TASK 16 — transaction_type_distribution VIEW
 -- Создать VIEW:
--- * сезонные тренды
--- * месячные объемы
--- * рост/падение
+-- * типы транзакций
+-- * количество
+-- * общая сумма
 
--- TASK 12 — New vs returning VIEW
+-- TASK 17 — customer_registration_trends VIEW
 -- Создать VIEW:
--- * новые vs вернувшиеся клиенты
--- * соотношение
--- * поведение
+-- * регистрация клиентов по дням
+-- * количество
+-- * risk_score
 
--- TASK 13 — Product usage VIEW
+-- TASK 18 — fraud_alert_severity VIEW
 -- Создать VIEW:
--- * популярность продуктов
--- * количество пользователей
--- * доходность
+-- * уровень серьезности
+-- * количество алертов
+-- * типы алертов
 
--- TASK 14 — Support tickets VIEW
+-- TASK 19 — account_status_summary VIEW
 -- Создать VIEW:
--- * тикеты поддержки
--- * категории проблем
--- * время решения
+-- * статус счетов
+-- * количество
+-- * общий баланс
 
--- TASK 15 — User retention VIEW
+-- TASK 20 — top_customers_by_balance VIEW
 -- Создать VIEW:
--- * удержание пользователей
--- * недельные когорты
--- * отток
+-- * топ 10 клиентов по балансу
+-- * общий баланс
+-- * количество счетов
 
--- TASK 16 — Revenue streams VIEW
+-- TASK 21 — recent_fraud_alerts VIEW
 -- Создать VIEW:
--- * источники дохода
--- * доля каждого
--- * рост
+-- * последние 50 fraud алертов
+-- * тип алерта
+-- * серьезность
 
--- TASK 17 — Cost analysis VIEW
+-- TASK 22 — transaction_failure_rate VIEW
 -- Создать VIEW:
--- * затраты по категориям
--- * операционные расходы
--- * эффективность
+-- * процент failed транзакций
+-- * по дням
+-- * общее количество
 
--- TASK 18 — Profitability VIEW
+-- TASK 23 — customer_activity_status VIEW
 -- Создать VIEW:
--- * прибыльность
--- * маржинальность
--- * EBITDA
+-- * активные/неактивные клиенты
+-- * последняя активность
+-- * количество транзакций
 
--- TASK 19 — Market share VIEW
+-- TASK 24 — loan_payment_schedule VIEW
 -- Создать VIEW:
--- * доля рынка
--- * конкуренты
--- * позиционирование
+-- * график платежей по кредитам
+-- * сумма платежа
+-- * дата
 
--- TASK 20 — Growth metrics VIEW
+-- TASK 25 — account_balance_changes VIEW
 -- Создать VIEW:
--- * метрики роста
--- * CAGR
--- * темпы
-
--- TASK 21 — Survey results VIEW
--- Создать VIEW:
--- * результаты опросов
--- * NPS
--- * удовлетворенность
-
--- TASK 22 — Feature adoption VIEW
--- Создать VIEW:
--- * принятие фич
--- * использование
--- * популярность
-
--- TASK 23 — A/B test results VIEW
--- Создать VIEW:
--- * результаты A/B тестов
--- * конверсия
--- * статистическая значимость
-
--- TASK 24 — Employee performance VIEW
--- Создать VIEW:
--- * производительность сотрудников
--- * KPI
--- * рейтинг
-
--- TASK 25 — Department budget VIEW
--- Создать VIEW:
--- * бюджеты отделов
--- * исполнение
--- * отклонения
+-- * изменения баланса
+-- * тип изменения
+-- * дата
 
 
 -- ============================================================
 -- FUNCTION (26-50)
 -- ============================================================
 
--- TASK 26 — calculate_employee_bonus FUNCTION
+-- TASK 26 — calculate_account_age FUNCTION
 -- Создать FUNCTION:
--- * расчет бонуса сотрудника
+-- * возраст счета в днях
 
--- TASK 27 — get_department_kpi FUNCTION
+-- TASK 27 — get_customer_loan_count FUNCTION
 -- Создать FUNCTION:
--- * KPI отдела
+-- * количество кредитов у клиента
 
--- TASK 28 — calculate_churn_probability FUNCTION
+-- TASK 28 — calculate_total_fraud_alerts FUNCTION
 -- Создать FUNCTION:
--- * вероятность оттока
+-- * общее количество fraud алертов по счету
 
--- TASK 29 — get_campaign_roi FUNCTION
+-- TASK 29 — get_account_transaction_count FUNCTION
 -- Создать FUNCTION:
--- * ROI кампании
+-- * количество транзакций по счету
 
--- TASK 30 — calculate_ltv_to_cac FUNCTION
+-- TASK 30 — calculate_balance_change_rate FUNCTION
 -- Создать FUNCTION:
--- * соотношение LTV/CAC
+-- * скорость изменения баланса
 
--- TASK 31 — get_monthly_recurring_revenue FUNCTION
+-- TASK 31 — get_customer_notification_count FUNCTION
 -- Создать FUNCTION:
--- * MRR расчет
+-- * количество уведомлений у клиента
 
--- TASK 32 — calculate_net_promoter_score FUNCTION
+-- TASK 32 — calculate_auth_fail_rate FUNCTION
 -- Создать FUNCTION:
--- * NPS расчет
+-- * процент неудачных входов
 
--- TASK 33 — get_customer_acquisition_cost FUNCTION
+-- TASK 33 — get_loan_payment_count FUNCTION
 -- Создать FUNCTION:
--- * CAC расчет
+-- * количество платежей по кредиту
 
--- TASK 34 — calculate_gross_margin FUNCTION
+-- TASK 34 — calculate_card_expiry_days FUNCTION
 -- Создать FUNCTION:
--- * валовая маржа
+-- * дней до истечения карты
 
--- TASK 35 — get_operating_income FUNCTION
+-- TASK 35 — get_beneficiary_count FUNCTION
 -- Создать FUNCTION:
--- * операционная прибыль
+-- * количество получателей у клиента
 
--- TASK 36 — calculate_working_capital FUNCTION
+-- TASK 36 — calculate_daily_avg_balance FUNCTION
 -- Создать FUNCTION:
--- * оборотный капитал
+-- * средний дневной баланс
 
--- TASK 37 — get_debt_to_equity FUNCTION
+-- TASK 37 — get_freeze_duration FUNCTION
 -- Создать FUNCTION:
--- * долг к собственному капиталу
+-- * продолжительность заморозки
 
--- TASK 38 — calculate_roi FUNCTION
+-- TASK 38 — calculate_transaction_success_rate FUNCTION
 -- Создать FUNCTION:
--- * рентабельность инвестиций
+-- * процент успешных транзакций
 
--- TASK 39 — get_break_even_point FUNCTION
+-- TASK 39 — get_customer_accounts_count FUNCTION
 -- Создать FUNCTION:
--- * точка безубыточности
+-- * количество счетов у клиента
 
--- TASK 40 — calculate_market_penetration FUNCTION
+-- TASK 40 — calculate_risk_trend FUNCTION
 -- Создать FUNCTION:
--- * проникновение на рынок
+-- * тренд изменения risk_score
 
--- TASK 41 — get_conversion_rate FUNCTION
+-- TASK 41 — get_currency_balance FUNCTION
 -- Создать FUNCTION:
--- * коэффициент конверсии
+-- * баланс по валюте
 
--- TASK 42 — calculate_bounce_rate FUNCTION
+-- TASK 42 — calculate_loan_utilization FUNCTION
 -- Создать FUNCTION:
--- * показатель отказов
+-- * использование кредитного лимита
 
--- TASK 43 — get_session_duration FUNCTION
+-- TASK 43 — get_fraud_severity_level FUNCTION
 -- Создать FUNCTION:
--- * длительность сессии
+-- * уровень серьезности fraud
 
--- TASK 44 — calculate_engagement_score FUNCTION
+-- TASK 44 — calculate_account_health_index FUNCTION
 -- Создать FUNCTION:
--- * уровень вовлеченности
+-- * индекс здоровья счета
 
--- TASK 45 — get_viral_coefficient FUNCTION
+-- TASK 45 — get_device_usage_count FUNCTION
 -- Создать FUNCTION:
--- * вирусный коэффициент
+-- * количество использований устройства
 
--- TASK 46 — calculate_customer_lifetime FUNCTION
+-- TASK 46 — calculate_login_frequency FUNCTION
 -- Создать FUNCTION:
--- * продолжительность жизни клиента
+-- * частота входов в систему
 
--- TASK 47 — get_discount_impact FUNCTION
+-- TASK 47 — get_customer_risk_level FUNCTION
 -- Создать FUNCTION:
--- * влияние скидок
+-- * уровень риска (LOW/MEDIUM/HIGH)
 
--- TASK 48 — calculate_price_elasticity FUNCTION
+-- TASK 48 — calculate_balance_growth_rate FUNCTION
 -- Создать FUNCTION:
--- * ценовая эластичность
+-- * темп роста баланса
 
--- TASK 49 — get_inventory_turnover FUNCTION
+-- TASK 49 — get_notification_read_rate FUNCTION
 -- Создать FUNCTION:
--- * оборачиваемость запасов
+-- * процент прочитанных уведомлений
 
--- TASK 50 — calculate_supplier_rating FUNCTION
+-- TASK 50 — calculate_account_score FUNCTION
 -- Создать FUNCTION:
--- * рейтинг поставщика
+-- * общий счет аккаунта
 
 
 -- ============================================================
 -- PROCEDURE (51-75)
 -- ============================================================
 
--- TASK 51 — generate_monthly_report PROCEDURE
+-- TASK 51 — update_account_status PROCEDURE
 -- Создать PROCEDURE:
--- * формирование месячного отчета
+-- * обновление статуса счета
 
--- TASK 52 — export_customer_data PROCEDURE
+-- TASK 52 — add_fraud_alert PROCEDURE
 -- Создать PROCEDURE:
--- * экспорт данных клиентов
+-- * добавление fraud алерта
 
--- TASK 53 — backup_database PROCEDURE
+-- TASK 53 — log_failed_transaction PROCEDURE
 -- Создать PROCEDURE:
--- * резервное копирование
+-- * запись failed транзакции
 
--- TASK 54 — restore_database PROCEDURE
+-- TASK 54 — update_customer_risk PROCEDURE
 -- Создать PROCEDURE:
--- * восстановление БД
+-- * обновление risk_score клиента
 
--- TASK 55 — cleanup_old_data PROCEDURE
+-- TASK 55 — send_notification PROCEDURE
 -- Создать PROCEDURE:
--- * очистка старых данных
+-- * отправка уведомления клиенту
 
--- TASK 56 — update_customer_segment PROCEDURE
+-- TASK 56 — close_expired_cards PROCEDURE
 -- Создать PROCEDURE:
--- * обновление сегмента клиента
+-- * закрытие просроченных карт
 
--- TASK 57 — refresh_materialized_views PROCEDURE
+-- TASK 57 — archive_old_transactions PROCEDURE
 -- Создать PROCEDURE:
--- * обновление материализованных представлений
+-- * архивация старых транзакций
 
--- TASK 58 — calculate_daily_metrics PROCEDURE
+-- TASK 58 — generate_monthly_statement PROCEDURE
 -- Создать PROCEDURE:
--- * расчет дневных метрик
+-- * генерация месячной выписки
 
--- TASK 59 — send_email_notification PROCEDURE
+-- TASK 59 — update_loan_status PROCEDURE
 -- Создать PROCEDURE:
--- * отправка email уведомлений
+-- * обновление статуса кредита
 
--- TASK 60 — create_user_audit PROCEDURE
+-- TASK 60 — record_login_history PROCEDURE
 -- Создать PROCEDURE:
--- * создание аудита пользователя
+-- * запись истории входов
 
--- TASK 61 — archive_transactions PROCEDURE
+-- TASK 61 — apply_interest_to_loans PROCEDURE
 -- Создать PROCEDURE:
--- * архивация транзакций
+-- * начисление процентов на кредиты
 
--- TASK 62 — synchronize_crm PROCEDURE
+-- TASK 62 — calculate_daily_interest PROCEDURE
 -- Создать PROCEDURE:
--- * синхронизация с CRM
+-- * расчет дневных процентов
 
--- TASK 63 — generate_invoice PROCEDURE
+-- TASK 63 — generate_audit_report PROCEDURE
 -- Создать PROCEDURE:
--- * генерация счета
+-- * генерация аудит отчета
 
--- TASK 64 — process_refund PROCEDURE
+-- TASK 64 — update_balance PROCEDURE
 -- Создать PROCEDURE:
--- * обработка возврата
+-- * обновление баланса счета
 
--- TASK 65 — apply_discount PROCEDURE
+-- TASK 65 — process_loan_payment PROCEDURE
 -- Создать PROCEDURE:
--- * применение скидки
+-- * обработка платежа по кредиту
 
--- TASK 66 — update_inventory PROCEDURE
+-- TASK 66 — create_account PROCEDURE
 -- Создать PROCEDURE:
--- * обновление инвентаря
+-- * создание нового счета
 
--- TASK 67 — create_shipment PROCEDURE
+-- TASK 67 — close_dormant_accounts PROCEDURE
 -- Создать PROCEDURE:
--- * создание отгрузки
+-- * закрытие неактивных счетов
 
--- TASK 68 — track_delivery PROCEDURE
+-- TASK 68 — reset_failed_count PROCEDURE
 -- Создать PROCEDURE:
--- * отслеживание доставки
+-- * сброс счетчика ошибок
 
--- TASK 69 — generate_sla_report PROCEDURE
+-- TASK 69 — migrate_customer_data PROCEDURE
 -- Создать PROCEDURE:
--- * отчет по SLA
+-- * миграция данных клиента
 
--- TASK 70 — calculate_team_performance PROCEDURE
+-- TASK 70 — generate_risk_report PROCEDURE
 -- Создать PROCEDURE:
--- * расчет производительности команды
+-- * генерация отчета по рискам
 
--- TASK 71 — create_project_timeline PROCEDURE
+-- TASK 71 — cleanup_audit_logs PROCEDURE
 -- Создать PROCEDURE:
--- * создание таймлайна проекта
+-- * очистка старых аудит логов
 
--- TASK 72 — allocate_budget PROCEDURE
+-- TASK 72 — import_customers PROCEDURE
 -- Создать PROCEDURE:
--- * распределение бюджета
+-- * импорт клиентов из файла
 
--- TASK 73 — approve_expense PROCEDURE
+-- TASK 73 — export_transactions PROCEDURE
 -- Создать PROCEDURE:
--- * утверждение расхода
+-- * экспорт транзакций в файл
 
--- TASK 74 — generate_payslip PROCEDURE
+-- TASK 74 — update_currency_rate PROCEDURE
 -- Создать PROCEDURE:
--- * генерация расчетного листа
+-- * обновление курса валют
 
--- TASK 75 — schedule_meeting PROCEDURE
+-- TASK 75 — reconcile_accounts PROCEDURE
 -- Создать PROCEDURE:
--- * планирование встречи
+-- * сверка счетов
 
 
 -- ============================================================
 -- TRIGGER (76-100)
 -- ============================================================
 
--- TASK 76 — Prevent weekend transactions trigger
+-- TASK 76 — prevent_negative_balance_trigger
 -- Создать TRIGGER:
--- * запрет транзакций в выходные
+-- * запрет отрицательного баланса
 
--- TASK 77 — Log email changes trigger
+-- TASK 77 — log_account_status_changes_trigger
 -- Создать TRIGGER:
--- * лог изменений email
+-- * лог изменения статуса счета
 
--- TASK 78 — Prevent duplicate emails trigger
+-- TASK 78 — update_risk_score_on_failed_login_trigger
 -- Создать TRIGGER:
--- * запрет дубликатов email
+-- * обновление risk_score при failed login
 
--- TASK 79 — Auto assign support trigger
+-- TASK 79 — auto_freeze_on_fraud_alert_trigger
 -- Создать TRIGGER:
--- * автоматическое назначение в поддержку
+-- * автоматическая заморозка при fraud
 
--- TASK 80 — Update last login trigger
+-- TASK 80 — validate_card_expiry_trigger
 -- Создать TRIGGER:
--- * обновление последнего входа
+-- * валидация срока действия карты
 
--- TASK 81 — Track price changes trigger
+-- TASK 81 — update_account_update_at_trigger
 -- Создать TRIGGER:
--- * отслеживание изменения цен
+-- * обновление update_at при изменении
 
--- TASK 82 — Prevent past dates trigger
+-- TASK 82 — prevent_duplicate_beneficiaries_trigger
 -- Создать TRIGGER:
--- * запрет прошедших дат
+-- * запрет дубликатов получателей
 
--- TASK 83 — Validate phone format trigger
+-- TASK 83 — auto_create_audit_log_trigger
+-- Создать TRIGGER:
+-- * автоматическое создание аудит лога
+
+-- TASK 84 — check_loan_limit_trigger
+-- Создать TRIGGER:
+-- * проверка лимита кредита
+
+-- TASK 85 — update_notification_status_trigger
+-- Создать TRIGGER:
+-- * обновление статуса уведомления
+
+-- TASK 86 — validate_transaction_amount_trigger
+-- Создать TRIGGER:
+-- * валидация суммы транзакции
+
+-- TASK 87 — auto_update_risk_score_trigger
+-- Создать TRIGGER:
+-- * автоматическое обновление risk_score
+
+-- TASK 88 — prevent_self_transfer_trigger
+-- Создать TRIGGER:
+-- * запрет перевода самому себе
+
+-- TASK 89 — check_account_status_before_transaction_trigger
+-- Создать TRIGGER:
+-- * проверка статуса счета перед транзакцией
+
+-- TASK 90 — update_last_activity_trigger
+-- Создать TRIGGER:
+-- * обновление последней активности
+
+-- TASK 91 — auto_close_expired_cards_trigger
+-- Создать TRIGGER:
+-- * автоматическое закрытие просроченных карт
+
+-- TASK 92 — validate_phone_format_trigger
 -- Создать TRIGGER:
 -- * валидация формата телефона
 
--- TASK 84 — Check age restriction trigger
+-- TASK 93 — check_email_uniqueness_trigger
 -- Создать TRIGGER:
--- * проверка возрастного ограничения
+-- * проверка уникальности email
 
--- TASK 85 — Prevent duplicate orders trigger
+-- TASK 94 — update_balance_on_transaction_trigger
 -- Создать TRIGGER:
--- * запрет дубликатов заказов
+-- * обновление баланса при транзакции
 
--- TASK 86 — Inventory low alert trigger
+-- TASK 95 — auto_block_suspicious_accounts_trigger
 -- Создать TRIGGER:
--- * сигнал о низком запасе
+-- * автоматическая блокировка подозрительных счетов
 
--- TASK 87 — Update product rating trigger
+-- TASK 96 — log_failed_transactions_trigger
 -- Создать TRIGGER:
--- * обновление рейтинга товара
+-- * лог failed транзакций
 
--- TASK 88 — Log search queries trigger
+-- TASK 97 — prevent_duplicate_transactions_trigger
 -- Создать TRIGGER:
--- * лог поисковых запросов
+-- * запрет дубликатов транзакций
 
--- TASK 89 — Prevent negative inventory trigger
+-- TASK 98 — update_customer_risk_trigger
 -- Создать TRIGGER:
--- * запрет отрицательного инвентаря
+-- * обновление риска клиента
 
--- TASK 90 — Auto archive old orders trigger
+-- TASK 99 — check_minimum_balance_trigger
 -- Создать TRIGGER:
--- * автоматическая архивация старых заказов
+-- * проверка минимального баланса
 
--- TASK 91 — Track user preferences trigger
+-- TASK 100 — auto_generate_card_number_trigger
 -- Создать TRIGGER:
--- * отслеживание предпочтений пользователя
-
--- TASK 92 — Prevent multiple sessions trigger
--- Создать TRIGGER:
--- * запрет множественных сессий
-
--- TASK 93 — Log password changes trigger
--- Создать TRIGGER:
--- * лог изменения паролей
-
--- TASK 94 — Validate zip code trigger
--- Создать TRIGGER:
--- * валидация почтового индекса
-
--- TASK 95 — Update search index trigger
--- Создать TRIGGER:
--- * обновление поискового индекса
-
--- TASK 96 — Prevent empty fields trigger
--- Создать TRIGGER:
--- * запрет пустых полей
-
--- TASK 97 — Auto generate username trigger
--- Создать TRIGGER:
--- * автоматическая генерация username
-
--- TASK 98 — Check subscription expiry trigger
--- Создать TRIGGER:
--- * проверка истечения подписки
-
--- TASK 99 — Prevent zero price trigger
--- Создать TRIGGER:
--- * запрет нулевой цены
-
--- TASK 100 — Log system errors trigger
--- Создать TRIGGER:
--- * лог системных ошибок
+-- * автоматическая генерация номера карты
