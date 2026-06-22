@@ -1174,9 +1174,26 @@ end;
 --    operatsiyani bekor qilish
 -- 6. ROLLBACK qilish
 -- 7. THROW qaytarish
-create trigger data_integrity_check_trigger on accounts 
-alter insert 
+
+create trigger data_integrity_check_trigger
+on accounts 
+after insert, update
 as begin 
+begin try 
+if exists (select 1 from inserted where balance <0 customer_id is null or status is null) 
+begin
+
+rollback;
+throw 50001, N'data integrity violation', 1;
+end 
+if exists (select 1 from inserted i left join customers c on c.id=i.customer_id where c.id is null) begin rollback;
+throw 50002, N'customer refernces not found', 1;
+end 
+end try 
+begin catch rollback;
+throw;
+end catch end;
+
 
 
 
