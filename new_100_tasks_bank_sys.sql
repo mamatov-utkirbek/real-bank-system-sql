@@ -404,63 +404,536 @@ select @age_days=DATEDIFF(day, created_at, GETDATE()) from accounts where id =@a
 RETURN @age_days;
 end;
 
-
-
 -- TASK 27 — get_customer_loan_count FUNCTION
 -- Создать FUNCTION:
 -- * количество кредитов у клиента
 
+-- PARAMETER
+-- @customer_id INT
+
+-- DECLARE
+-- @loan_count INT
+
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+
+-- 2. Customer kreditlarini hisoblash
+--    loans jadvalidan
+
+-- 3. Customer mavjud bo‘lmasa
+--    0 qaytarish
+
+-- 4. Kreditlar sonini COUNT(id) orqali olish
+
+-- RETURN:
+-- INT
+
+create function get_customer_loan_count(@customer_id int)
+returns int 
+as begin 
+declare @loan_count int;
+
+if not exists(select 1 from customers  where  id =@customer_id) 
+return 0;
+
+select @loan_count= count(*) from loans where customer_id =@customer_id;
+
+return @loan_count;
+end;
+
+
+
+
+
 -- TASK 28 — calculate_total_fraud_alerts FUNCTION
 -- Создать FUNCTION:
 -- * общее количество fraud алертов по счету
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @alert_count INT
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Account bo‘yicha fraud alertlarni hisoblash
+--    fraud_alerts jadvalidan
+-- 3. Account mavjud bo‘lmasa
+--    0 qaytarish
+-- 4. Fraud alert sonini COUNT(id) orqali olish
+-- RETURN:
+-- INT
+create function calculate_total_fraud_alerts (@account_id int) 
+returns int
+as begin 
+declare @alert_count int;
+
+if not exists (select 1 from accounts where id=@account_id) 
+return 0 ;
+
+select @alert_count=count(id) from fraud_alerts where account_id=@account_id;
+return @alert_count;
+end;
+
+
+
+
+
+
+
+
+
 
 -- TASK 29 — get_account_transaction_count FUNCTION
 -- Создать FUNCTION:
 -- * количество транзакций по счету
+create function get_account_transaction_count (@account_id int) 
+returns int 
+as begin 
+declare @tx_count int;
+
+if not exists (select 1 from accounts where id =@account_id)
+return 0;
+
+select @tx_count=count(t.id) from transactions t join accounts a on t.from_account_id=a.id or t.to_account_id=a.id where a.id =@account_id;
+
+return @tx_count;
+end;
+
+
+
+
 
 -- TASK 30 — calculate_balance_change_rate FUNCTION
 -- Создать FUNCTION:
--- * скорость изменения баланса
+-- * скорость изменения баланс
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @total_change DECIMAL(12,2)
+-- @days_count INT
+-- @change_rate DECIMAL(12,2)
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Account balans o‘zgarishlarini olish
+--    ledger_entries jadvalidan
+-- 3. Umumiy balans o‘zgarishini hisoblash
+--    credit va debit farqi orqali
+-- 4. O‘zgarish davridagi kunlar sonini hisoblash
+-- 5. Agar account mavjud bo‘lmasa
+--    0 qaytarish
+-- 6. Balans o‘zgarish tezligini hisoblash
+--    umumiy o‘zgarish / kunlar soni
+-- RETURN:
+-- DECIMAL(12,2)
+
+
+create function calculate_balance_change_rate (@account_id int)
+returns decimal(12,2)
+as begin 
+declare @total_cange decimal(12,2);
+declare @days_count int;
+declare @change_rate decimal(12,2);
+
+if not exists (select 1 from accounts where id=@account_id) 
+return 0;
+
+select @total_cange=sum(amount) from ledger_entries where account_id=@account_id;
+
+select @days_count=DATEDIFF(day, min(created_at),max(created_at)) from ledger_entries where account_id=@account_id;
+
+if @days_count is null or @days_count=0
+return 0;
+
+set @change_rate =@total_cange/@days_count;
+
+return @change_rate;
+end;
+
+
+
+
+
+
+
 
 -- TASK 31 — get_customer_notification_count FUNCTION
 -- Создать FUNCTION:
 -- * количество уведомлений у клиента
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @notification_count INT
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Customer notificationlarini hisoblash
+--    notifications jadvalidan
+-- 3. Customer mavjud bo‘lmasa
+--    0 qaytarish
+-- 4. Notification sonini COUNT(id) orqali olish
+-- RETURN:
+-- INT
+
+
+create function get_customer_notification_count (@customer_id int) 
+returns int
+as begin 
+declare @notifation_count int;
+
+if not exists (select 1 from customers where id =@customer_id)
+return 0;
+
+select @notifation_count=count(id) from notifications where customer_id=@customer_id;
+
+if @notifation_count is null or @notifation_count=0
+return 0;
+
+return @notifation_count;
+end;
+
+
+
+
+
 
 -- TASK 32 — calculate_auth_fail_rate FUNCTION
 -- Создать FUNCTION:
 -- * процент неудачных входов
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @total_login INT
+-- @failed_login INT
+-- @fail_rate DECIMAL(12,2)
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Login urinishlarini hisoblash
+--    login_history jadvalidan
+-- 3. Umumiy login sonini olish
+-- 4. Failed login sonini olish
+-- 5. Agar customer mavjud bo‘lmasa
+--    0 qaytarish
+-- 6. Agar login mavjud bo‘lmasa
+--    0 qaytarish
+-- 7. Failed foizini hisoblash
+--    (failed login / total login) * 100
+-- RETURN:
+-- DECIMAL(12,2)
+
+
+create function calculate_auth_fail_rate(@customer_id int)
+returns decimal(12,2) 
+as begin 
+declare @total_login int;
+declare @failed_login int; 
+declare @fail_rate decimal(12,2);
+
+if not exists (select 1 from customers where id =@customer_id)
+return 0;
+
+select @total_login=count(id) from login_history where customer_id=@customer_id;
+
+select @failed_login=count(fa.id) from fraud_alerts fa join accounts a on a.id=fa.account_id where a.customer_id=@customer_id and fa.alert_type='multiple_failed_logins';
+
+if @failed_login is null or @failed_login=0
+return 0;
+
+set @fail_rate=(@failed_login * 1.0 /@total_login)*100.0;
+
+return coalesce(@fail_rate,0);
+end;
+
 
 -- TASK 33 — get_loan_payment_count FUNCTION
 -- Создать FUNCTION:
 -- * количество платежей по кредиту
+-- PARAMETER
+-- @loan_id INT
+-- DECLARE
+-- @payment_count INT
+-- 1. Loan mavjudligini tekshirish
+--    loans jadvalidan
+-- 2. Kredit bo‘yicha to‘lovlarni hisoblash
+--    loan_payments jadvalidan
+-- 3. Loan mavjud bo‘lmasa
+--    0 qaytarish
+-- 4. Payment sonini COUNT(id) orqali olish
+-- RETURN:
+-- INT
+
+create function get_loan_payment_count(@loan_id int) 
+returns int
+as begin 
+declare @payment_count int;
+
+if not exists (select 1 from loans where id=@loan_id)
+return 0;
+
+select @payment_count=count(id) from loan_payments where loan_id=@loan_id;
+
+if @payment_count is null or @payment_count=0
+return 0;
+
+return @payment_count;
+end;
+
+
+
 
 -- TASK 34 — calculate_card_expiry_days FUNCTION
 -- Создать FUNCTION:
 -- * дней до истечения карты
+-- PARAMETER
+-- @card_id INT
+-- DECLARE
+-- @expiry_days INT
+-- 1. Card mavjudligini tekshirish
+--    cards jadvalidan
+-- 2. Card expiry_date olish
+-- 3. Bugungi sana bilan expiry_date orasidagi kunlarni hisoblash
+-- 4. Card mavjud bo‘lmasa
+--    0 qaytarish
+-- 5. Agar karta muddati o‘tgan bo‘lsa
+--    0 qaytarish
+-- RETURN:
+-- INT
+create function calculate_card_expiry_days(@card_id int) 
+returns int 
+as begin 
+declare @expiry_days int;
+
+if not exists(select 1 from cards where id =@card_id)
+return 0;
+
+
+select @expiry_days=datediff(day, GETDATE(), expiry_date) from cards where id=@card_id
+
+if @expiry_days is null or @expiry_days=0
+return 0;
+
+return @expiry_days;
+end;
+
+
+
 
 -- TASK 35 — get_beneficiary_count FUNCTION
 -- Создать FUNCTION:
 -- * количество получателей у клиента
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @beneficiary_count INT
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Customer beneficiarylarini hisoblash
+--    beneficiaries jadvalidan
+-- 3. Customer mavjud bo‘lmasa
+--    0 qaytarish
+-- 4. Beneficiary sonini COUNT(id) orqali olish
+-- RETURN:
+-- INT
+create function get_beneficiary_count(@customer_id int) 
+returns int 
+as begin 
+declare @BENEFICIARY_count int;
+
+if not exists (select 1 from customers where id=@customer_id)
+return 0;
+
+select @BENEFICIARY_count=count(id) from beneficiaries where customer_id=@customer_id;
+return @BENEFICIARY_count;
+end;
+
+
 
 -- TASK 36 — calculate_daily_avg_balance FUNCTION
 -- Создать FUNCTION:
 -- * средний дневной баланс
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @avg_balance DECIMAL(12,2)
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Account balanslarini olish
+--    ledger_entries yoki accounts jadvalidan
+-- 3. Kunlik o‘rtacha balansni hisoblash
+--    AVG(balance)
+-- 4. Account mavjud bo‘lmasa
+--    0 qaytarish
+-- 5. Natijani qaytarish
+-- RETURN:
+-- DECIMAL(12,2)
+
+create function calculate_daily_avg_balance(@account_id int) 
+returns decimal(12,2)
+as begin 
+declare @avg_balance decimal(12,2);
+
+if not exists (select 1 from accounts where id=@account_id)
+return 0;
+
+select @avg_balance=avg(daily_balance) from (select cast(created_at as date) tx_date, sum(amount) daily_balance from ledger_entries where account_id=@account_id group by cast(created_at as date))x; 
+
+if @avg_balance is null 
+return 0;
+
+return @avg_balance;
+end;
+
+select dbo.calculate_daily_avg_balance (6)
 
 -- TASK 37 — get_freeze_duration FUNCTION
 -- Создать FUNCTION:
 -- * продолжительность заморозки
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @freeze_duration INT
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Account freeze boshlangan sanani olish
+-- 3. Freeze boshlangan sanadan bugungi kungacha bo‘lgan kunlarni hisoblash
+-- 4. Account mavjud bo‘lmasa
+--    0 qaytarish
+-- 5. Agar freeze holati bo‘lmasa
+--    0 qaytarish
+-- RETURN:
+-- INT
+create function get_freeze_duration(@account_id int) 
+returns int
+as begin 
+declare @freeze_duration int;
+
+if not exists (select 1 from accounts where id=@account_id) 
+return 0;
+
+select @freeze_duration=datediff(day, frozen_at,getdate()) from account_freeze where account_id=@account_id;
+
+if @freeze_duration is null 
+return 0;
+
+return @freeze_duration;
+end;
+
+select dbo.get_freeze_duration ()
+
 
 -- TASK 38 — calculate_transaction_success_rate FUNCTION
 -- Создать FUNCTION:
 -- * процент успешных транзакций
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @total_tx INT
+-- @success_tx INT
+-- @success_rate DECIMAL(12,2)
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Umumiy tranzaksiyalar sonini hisoblash
+--    transactions jadvalidan
+-- 3. Successful tranzaksiyalar sonini hisoblash
+--    status='completed'
+-- 4. Account mavjud bo‘lmasa
+--    0 qaytarish
+-- 5. Transaction mavjud bo‘lmasa
+--    0 qaytarish
+-- 6. Foiz hisoblash
+--    (success_tx / total_tx) * 100
+-- RETURN:
+-- DECIMAL(12,2)
+
+create function calculate_transaction_success_rate(@account_id int) 
+returns decimal(12,2)
+as begin 
+declare @total_tx int;
+declare @success_tx int;
+declare @success_rate decimal(12,2);
+
+if not exists (select 1 from accounts where id=@account_id)
+return 0;
+
+select @total_tx=count(id) from transactions where from_account_id=@account_id or to_account_id=@account_id;
+
+select @success_tx=count(id) from transactions where status='success' and (from_account_id=@account_id or to_account_id=@account_id);
+if @total_tx =0 
+return 0;
+set @success_rate=coalesce(@success_tx * 1.0/nullif(@total_tx, 0)*100, 0);
+return @success_rate;
+end;
+
+
+
+
 
 -- TASK 39 — get_customer_accounts_count FUNCTION
 -- Создать FUNCTION:
 -- * количество счетов у клиента
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @account_count INT
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Customer accountlarini hisoblash
+--    accounts jadvalidan
+-- 3. Customer mavjud bo‘lmasa
+--    0 qaytarish
+-- RETURN:
+-- INT
+create function get_customer_accounts_count(@customer_id int) 
+returns int
+as begin 
+declare @account_count int;
+
+if not exists (select 1 from customers where id = @customer_id)
+return 0;
+
+select @account_count=count(id) from accounts where customer_id=@customer_id;
+
+return @account_count;
+end;
+
+
+
+
+
+
+
+
+
+
 
 -- TASK 40 — calculate_risk_trend FUNCTION
 -- Создать FUNCTION:
 -- * тренд изменения risk_score
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @old_risk INT
+-- @current_risk INT
+-- @risk_trend NVARCHAR(20)
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Hozirgi risk_score olish
+--    customers jadvalidan
+-- 3. Oldingi risk_score olish
+--    risk_history jadvalidan
+-- 4. Agar eski risk yuqori bo‘lsa
+--    'DECREASING' qaytarish
+-- 5. Agar yangi risk yuqori bo‘lsa
+--    'INCREASING' qaytarish
+-- 6. Risk o‘zgarmasa
+--    'STABLE' qaytarish
+-- 7. Customer mavjud bo‘lmasa
+--    'NOT_FOUND' qaytarish
+-- RETURN:
+-- NVARCHAR(20)
+create function calculate_risk_trend
+
+
+
+
+
 
 -- TASK 41 — get_currency_balance FUNCTION
 -- Создать FUNCTION:
