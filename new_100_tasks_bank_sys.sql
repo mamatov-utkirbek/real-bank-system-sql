@@ -179,8 +179,9 @@ select id, [status],balance from accounts  where balance>10000
 -- * тип транзакции
 -- * сумма
 
-select amount, [type] from  transactions
-limit 100
+select top 100 amount, [type], created_at from  transactions
+
+order by created_at desc
 
 
 
@@ -190,11 +191,24 @@ limit 100
 -- * статус карты
 -- * владелец счета
 
+select c.id,a.id, cu.full_name,c.[status], c.expiry_date from cards c join accounts a  on c.account_id=a.id join customers cu on cu.id=a.customer_id
+where c.expiry_date<=DATEADD(day, 30, GETDATE()) and c.expiry_date>=CAST(GETDATE() as date);
+
+
+
+
 -- TASK 10 — beneficiary_statistics VIEW
 -- Создать VIEW:
 -- * количество получателей у клиента
 -- * никнеймы получателей
 -- * дата добавления
+
+select customer_id,  count(beneficiary_account_id),nickname,  created_at  from beneficiaries 
+group by customer_id, nickname, created_at
+
+
+
+
 
 -- TASK 11 — daily_transaction_volume VIEW
 -- Создать VIEW:
@@ -202,11 +216,21 @@ limit 100
 -- * количество транзакций
 -- * средняя сумма
 
+
+SELECT cast(created_at as date ),sum(amount), count(id),  avg(amount) from transactions 
+GROUP BY cast(created_at as date)
+
+
 -- TASK 12 — customer_risk_distribution VIEW
 -- Создать VIEW:
 -- * распределение risk_score
 -- * количество клиентов
 -- * средний баланс
+
+select c.risk_score, count(c.id) count_customer, avg(a.balance) avg_balance  from customers c join accounts a on a.customer_id=c.id 
+GROUP by c.risk_score
+
+
 
 -- TASK 13 — currency_usage VIEW
 -- Создать VIEW:
@@ -214,11 +238,19 @@ limit 100
 -- * количество счетов
 -- * общий баланс
 
+select a.currency , count(a.id)count_account, sum(a.balance)  total_balance  from accounts a  
+group by a.currency
+
+
 -- TASK 14 — loan_status_distribution VIEW
 -- Создать VIEW:
 -- * активные кредиты
 -- * закрытые кредиты
 -- * общая сумма
+
+select status, sum(amount) total_amount from loans 
+group by [status]
+
 
 -- TASK 15 — account_creation_by_month VIEW
 -- Создать VIEW:
@@ -226,11 +258,22 @@ limit 100
 -- * количество
 -- * статус
 
+
+select count(id), [status], format(created_at, 'yyyy-MM') from  accounts 
+GROUP by [status],format(created_at, 'yyyy-MM') 
+
+
+
 -- TASK 16 — transaction_type_distribution VIEW
 -- Создать VIEW:
 -- * типы транзакций
 -- * количество
 -- * общая сумма
+
+SELECT sum(amount) total_tx, count(*) count_tx,type  from transactions
+group by [type]
+
+
 
 -- TASK 17 — customer_registration_trends VIEW
 -- Создать VIEW:
@@ -238,11 +281,21 @@ limit 100
 -- * количество
 -- * risk_score
 
+select risk_score, count(*) count_customers, FORMAT(created_at, 'yyyy-mm-dd')  from customers
+GROUP by risk_score,  FORMAT(created_at, 'yyyy-mm-dd') 
+
+
 -- TASK 18 — fraud_alert_severity VIEW
 -- Создать VIEW:
 -- * уровень серьезности
 -- * количество алертов
 -- * типы алертов
+
+
+SELECT severity, count(*) count_alerts, alert_type  from fraud_alerts
+group by severity, alert_type
+
+
 
 -- TASK 19 — account_status_summary VIEW
 -- Создать VIEW:
@@ -250,11 +303,21 @@ limit 100
 -- * количество
 -- * общий баланс
 
+
+select [status], count(*) count_account, sum(balance) total_balance  from accounts 
+group by [status]
+
+
 -- TASK 20 — top_customers_by_balance VIEW
 -- Создать VIEW:
 -- * топ 10 клиентов по балансу
 -- * общий баланс
 -- * количество счетов
+
+
+select top 10 customer_id, sum(balance) total_balance, count(*) from accounts 
+group by customer_id
+order by total_balance desc 
 
 -- TASK 21 — recent_fraud_alerts VIEW
 -- Создать VIEW:
@@ -262,11 +325,20 @@ limit 100
 -- * тип алерта
 -- * серьезность
 
+select top 50 created_at, alert_type,severity  from fraud_alerts
+order by id desc
+
+
 -- TASK 22 — transaction_failure_rate VIEW
 -- Создать VIEW:
 -- * процент failed транзакций
 -- * по дням
 -- * общее количество
+
+
+select count(*) total_count_tx, COUNT(case when [status]='failed' then 1 end)*100.0/count(*) precent_tx, format(created_at, 'yyyy-MM-dd') from transactions
+GROUP by format(created_at, 'yyyy-MM-dd')
+
 
 -- TASK 23 — customer_activity_status VIEW
 -- Создать VIEW:
@@ -274,11 +346,21 @@ limit 100
 -- * последняя активность
 -- * количество транзакций
 
+
+select c.id, c.full_name,count(t.id )  count_tx, case when count(t.id)>0 then 'active' else 'inactive' end status_customer, max(t.created_at) last_tx
+from customers c left join accounts a on a.customer_id=c.id 
+left JOIN transactions t on t.to_account_id=a.id or t.from_account_id=a.id 
+group by c.id, c.full_name
+
 -- TASK 24 — loan_payment_schedule VIEW
 -- Создать VIEW:
 -- * график платежей по кредитам
 -- * сумма платежа
 -- * дата
+
+select loan_id,  sum(amount) total_amount, format(created_at, 'yyyy-MM-dd') from loan_payments
+GROUP by loan_id,  format(created_at, 'yyyy-MM-dd')
+
 
 -- TASK 25 — account_balance_changes VIEW
 -- Создать VIEW:
@@ -286,6 +368,7 @@ limit 100
 -- * тип изменения
 -- * дата
 
+select le.account_id, le.entry_type, le.amount, format(created_at, 'yyyy-MM')  from ledger_entries le
 
 -- ============================================================
 -- FUNCTION (26-50)
