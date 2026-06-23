@@ -376,7 +376,35 @@ select le.account_id, le.entry_type, le.amount, format(created_at, 'yyyy-MM')  f
 
 -- TASK 26 — calculate_account_age FUNCTION
 -- Создать FUNCTION:
--- * возраст счета в днях
+-- * расчет возраста счета в днях
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @created_at DATETIME2
+-- @age_days INT
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Account yaratilgan sanani olish
+--    created_at ustunidan
+-- 3. Account mavjud bo‘lmasa
+--    NULL qaytarish
+-- 4. Account yoshini hisoblash
+--    DATEDIFF(day, created_at, GETDATE())
+-- RETURN:
+-- INT
+
+
+create function calculate_account_age(@account_id int) 
+returns int 
+as begin 
+declare @age_days int;
+
+select @age_days=DATEDIFF(day, created_at, GETDATE()) from accounts where id =@account_id;
+
+RETURN @age_days;
+end;
+
+
 
 -- TASK 27 — get_customer_loan_count FUNCTION
 -- Создать FUNCTION:
