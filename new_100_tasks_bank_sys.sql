@@ -114,9 +114,9 @@ GROUP by  n.customer_id
 -- 7. NULL qiymatlarni COALESCE orqali 0 ga aylantirish
 -- 8. Natijani payment_date bo‘yicha tartiblash
 
-
-select l.id, l.created_at, sum(l.amount), cast(l.created_atc as date) from loans l join loan_payments lp on lp.loan_id=l.id 
-
+create view loan_repayment_history as
+select l.id, sum(lp.amount) paymet_amount, cast(lp.created_at as date) payment_date from loans l join loan_payments lp on lp.loan_id=l.id 
+GROUP BY l.id, cast(lp.created_at as date)
 
 
 
