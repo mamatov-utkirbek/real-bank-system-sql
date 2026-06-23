@@ -121,12 +121,36 @@ GROUP BY l.id, cast(lp.created_at as date)
 
 
 
-
 -- TASK 5 — account_freeze_events VIEW
 -- Создать VIEW:
 -- * замороженные счета
 -- * причина заморозки
 -- * продолжительность заморозки
+
+-- PARAMETER
+-- TABLE: accounts, account_freeze
+
+-- 1. accounts jadvalini account_freeze jadvali bilan JOIN qilish
+-- 2. Muzlatilgan accountlarni aniqlash
+-- 3. Account freeze sababini olish
+-- 4. Freeze boshlangan sanani aniqlash
+-- 5. Freeze davomiyligini hisoblash
+-- 6. Duration qiymatini kunlarda hisoblash
+-- 7. NULL qiymatlarni COALESCE orqali 0 ga aylantirish
+-- 8. Natijada quyidagi ustunlarni chiqarish:
+--    account_id
+--    freeze_reason
+--    freeze_date
+--    freeze_duration
+-- 9. Account_id bo‘yicha GROUP BY qilish
+-- 10. Natijani freeze_date bo‘yicha tartiblash
+
+select a.id, af.reason,a.status, af.frozen_at, DATEDIFF(day, af.frozen_at, GETdate()) from accounts a join account_freeze  af on af.account_id=a.id 
+where a.[status]='frozen'
+
+SELECT * from accounts
+
+SELECT * from account_freeze
 
 -- TASK 6 — failed_login_attempts VIEW
 -- Создать VIEW:
@@ -134,17 +158,31 @@ GROUP BY l.id, cast(lp.created_at as date)
 -- * IP адреса
 -- * устройства
 
+
+select lh.customer_id, lh.ip_address, lh.device, lh.created_at from login_history lh join customers c on lh.customer_id=c.id  JOIN accounts a on a.customer_id=c.id join fraud_alerts fa on a.id=fa.account_id
+where fa.alert_type='multiple_failed_logins'
+
+
 -- TASK 7 — high_balance_accounts VIEW
 -- Создать VIEW:
 -- * счета с высоким балансом (>10000)
 -- * валюта счета
 -- * статус
 
+select id, [status],balance from accounts  where balance>10000
+
+
+
 -- TASK 8 — recent_transactions VIEW
 -- Создать VIEW:
 -- * последние 100 транзакций
 -- * тип транзакции
 -- * сумма
+
+select amount, [type] from  transactions
+limit 100
+
+
 
 -- TASK 9 — card_expiry_warnings VIEW
 -- Создать VIEW:
