@@ -66,18 +66,61 @@ select c.id, c.full_name, count(lg.id),max(lg.created_at )   from customers c  j
 GROUP by c.id, c.full_name 
 
 
-
 -- TASK 3 — notification_delivery_stats VIEW
 -- Создать VIEW:
 -- * доставленные уведомления
 -- * прочитанные уведомления
 -- * процент прочтения
 
+-- PARAMETER
+-- TABLE: notifications
+
+-- 1. notifications jadvalidan ma'lumotlarni olish
+-- 2. Har bir foydalanuvchi bo‘yicha bildirishnomalarni guruhlash
+-- 3. Yetkazilgan bildirishnomalar sonini hisoblash
+-- 4. O‘qilgan bildirishnomalar sonini hisoblash
+-- 5. Yetkazilgan va o‘qilgan bildirishnomalar nisbatini aniqlash
+-- 6. O‘qilish foizini hisoblash
+-- 7. NULL qiymatlarni COALESCE orqali 0 ga aylantirish
+-- 8. Foydalanuvchi identifikatori bo‘yicha GROUP BY qilish
+-- 9. Natijada quyidagi ustunlarni chiqarish:
+--    user_id
+--    delivered_count
+--    read_count
+--    read_percentage
+-- 10. Natijani user_id bo‘yicha tartiblash
+
+select n.customer_id, count(n.id), sum(case when n.is_read=1 then 1 else 0 end )read_notifacation , 
+coalesce(sum(case when n.is_read=1 then 1 else 0 end ), 0)*100.0/nullif(COUNT(n.id),0), 0 from notifications n
+GROUP by  n.customer_id
 -- TASK 4 — loan_repayment_history VIEW
 -- Создать VIEW:
 -- * история платежей по кредитам
 -- * сумма платежа
 -- * дата платежа
+
+-- PARAMETER
+-- TABLE: loans, loan_payments
+
+-- 1. loans jadvalini loan_payments jadvali bilan JOIN qilish
+-- 2. Har bir kredit bo‘yicha to‘lov tarixini olish
+-- 3. Har bir to‘lov uchun to‘langan summani chiqarish
+-- 4. Har bir to‘lov sanasini chiqarish
+-- 5. Loan_id bo‘yicha to‘lovlarni guruhlash
+-- 6. Natijada quyidagi ustunlarni chiqarish:
+--    loan_id
+--    payment_amount
+--    payment_date
+-- 7. NULL qiymatlarni COALESCE orqali 0 ga aylantirish
+-- 8. Natijani payment_date bo‘yicha tartiblash
+
+
+select l.id, l.created_at, sum(l.amount), cast(l.created_atc as date) from loans l join loan_payments lp on lp.loan_id=l.id 
+
+
+
+
+
 
 -- TASK 5 — account_freeze_events VIEW
 -- Создать VIEW:
