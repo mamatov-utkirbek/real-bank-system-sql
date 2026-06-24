@@ -90,8 +90,8 @@ GROUP by c.id, c.full_name
 --    read_percentage
 -- 10. Natijani user_id bo‘yicha tartiblash
 
-select n.customer_id, count(n.id), sum(case when n.is_read=1 then 1 else 0 end )read_notifacation , 
-coalesce(sum(case when n.is_read=1 then 1 else 0 end ), 0)*100.0/nullif(COUNT(n.id),0), 0 from notifications n
+select n.customer_id, count(n.id), sum(case when n.is_read=1 then 1 0 end )read_notifacation , 
+coalesce(sum(case when n.is_read=1 then 1 0 end ), 0)*100.0/nullif(COUNT(n.id),0), 0 from notifications n
 GROUP by  n.customer_id
 -- TASK 4 — loan_repayment_history VIEW
 -- Создать VIEW:
@@ -347,7 +347,7 @@ GROUP by format(created_at, 'yyyy-MM-dd')
 -- * количество транзакций
 
 
-select c.id, c.full_name,count(t.id )  count_tx, case when count(t.id)>0 then 'active' else 'inactive' end status_customer, max(t.created_at) last_tx
+select c.id, c.full_name,count(t.id )  count_tx, case when count(t.id)>0 then 'active' 'inactive' end status_customer, max(t.created_at) last_tx
 from customers c left join accounts a on a.customer_id=c.id 
 left JOIN transactions t on t.to_account_id=a.id or t.from_account_id=a.id 
 group by c.id, c.full_name
@@ -928,52 +928,605 @@ end;
 --    'NOT_FOUND' qaytarish
 -- RETURN:
 -- NVARCHAR(20)
-create function calculate_risk_trend
+create function calculate_risk_trend (@customer_id int) 
+returns int
+
+as begin 
+declare @current_risk int;
+declare @risk_trend int;
+declare @old_risk int;
+
+if not exists (select 1 from customers where id=@customer_id)
+return 0;
+
+select @current_risk= risk_score from customers where id=@customer_id;
+
+select @old_risk= risk_score from (select risk_score, row_number() over(order by created_at desc ) rn from customers where id=@customer_id)x where rn=2
 
 
 
-
-
+select * from customers 
 
 -- TASK 41 — get_currency_balance FUNCTION
 -- Создать FUNCTION:
 -- * баланс по валюте
+-- PARAMETER
+-- @customer_id INT
+-- @currency NVARCHAR(10)
+-- DECLARE
+-- @balance DECIMAL(12,2)
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Berilgan valuta bo‘yicha account balanslarini olish
+--    accounts jadvalidan
+-- 3. Account mavjud bo‘lmasa
+--    0 qaytarish
+-- 4. Valuta bo‘yicha jami balansni hisoblash
+--    SUM(balance)
+-- RETURN:
+-- DECIMAL(12,2)
+create function get_currency_balance
+(@customer_id int, @currency nvarchar(20)) 
+returns decimal(12,2)
+as begin 
+declare @balance decimal(12,2);
+
+if not exists (select 1 from customers where id=@customer_id) 
+return 0;
+
+select @balance=sum(balance) from accounts where customer_id =@customer_id and currency=@currency
+
+if @balance is null 
+return 0;
+
+return @balance;
+end;
+
+
+
 
 -- TASK 42 — calculate_loan_utilization FUNCTION
 -- Создать FUNCTION:
--- * использование кредитного лимита
+-- * использование кредитной суммы
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @loan_amount DECIMAL(12,2)
+-- @total_loan DECIMAL(12,2)
+-- @utilization DECIMAL(12,2)
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Customer umumiy kredit summasini olish
+--    loans jadvalidan SUM(amount) orqali
+-- 3. Faol kredit summasini olish
+--    loans jadvalidan status='active' orqali
+-- 4. Formula:
+--    (active_loan_amount / total_loan_amount) * 100
+-- 5. Umumiy kredit summasi 0 bo‘lsa
+--    0 qaytarish
+-- RETURN:
+-- DECIMAL(12,2)
+
+
+create function calculate_loan_utilization(@customer_id int)
+returns decimal(12,2) 
+as begin 
+declare @loan_amount decimal(12,2);
+declare @total_loan decimal(12,2);
+declare @utilization decimal(12,2);
+
+if not exists (select 1 from customers where id=@customer_id)
+return 0 ;
+
+select @total_loan=sum(amount) from loans where customer_id= @customer_id;
+
+select @loan_amount=sum(amount) from loans where customer_id =@customer_id and status='active';
+if @total_loan is null or @total_loan=0
+return 0;
+
+
+set @utilization=coalesce(@loan_amount *1.0/nullif(@total_loan, 0)*100,0) ;
+
+return @utilization;
+end;
+
+
 
 -- TASK 43 — get_fraud_severity_level FUNCTION
 -- Создать FUNCTION:
 -- * уровень серьезности fraud
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @fraud_count INT
+-- @severity NVARCHAR(20)
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Customer fraud alert sonini hisoblash
+--    fraud_alerts va accounts jadvallaridan
+-- 3. Fraud alert soniga qarab severity belgilash:
+--    0 ta alert  -> LOW
+--    1-5 ta alert -> MEDIUM
+--    5 dan ko‘p -> HIGH
+-- RETURN:
+-- NVARCHAR(20)
+create function get_fraud_severity_level(@customer_id int) 
+returns nvarchar(20)
+as begin 
+declare @fraud_count int;
+declare @severty nvarchar(20);
+
+if not exists (select 1 from customers where id=@customer_id)
+return 'not found';
+
+select @fraud_count=count (fa.id) from fraud_alerts fa join accounts a on fa.account_id=a.id where a.customer_id=@customer_id;
+
+if @fraud_count =0 
+set @severty ='low';
+
+if @fraud_count between 1 and 5 
+set @severty ='medium';
+
+
+set @severty='high';
+
+return @severty;
+end;
+
+
 
 -- TASK 44 — calculate_account_health_index FUNCTION
 -- Создать FUNCTION:
 -- * индекс здоровья счета
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @balance DECIMAL(12,2)
+-- @status NVARCHAR(20)
+-- @fail_count INT
+-- @transaction_count INT
+-- @fraud_count INT
+-- @health_index INT
+declare @status nvarchar(20);
+declare @fail_count int;
+declare @tx_count int;
+declare	@fraud_count int ;
+declare @balance decimal(12,2);
+
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Agar account mavjud bo‘lmasa
+--    0 qaytarish
+-- 3. Account ma'lumotlarini olish:
+--    - balance
+--    - status
+--    - fail_count
+-- 4. Account transaction faoliyatini hisoblash
+--    transactions jadvalidan:
+--    - from_account_id
+--    - to_account_id
+-- 5. Account fraud alert sonini hisoblash
+--    fraud_alerts jadvalidan
+-- 6. Boshlang‘ich health index:
+--    100
+-- 7. Agar status = 'blocked' yoki status = 'closed'
+--    -40 ball
+-- 8. Agar status = 'frozen' yoki status = 'dormant'
+--    -20 ball
+-- 9. Agar balance = 0
+--    -10 ball
+-- 10. Har bir fail_count uchun
+--     -5 ball
+-- 11. Agar fraud_count:
+--     1-3 ta alert -> -20 ball
+--     4-5 ta alert -> -40 ball
+--     5 dan ko‘p -> -60 ball
+-- 12. Agar transaction_count > 0
+--     +10 ball
+-- 13. Health index:
+--     0 dan kichik bo‘lsa 0 qilish
+-- 14. Health index:
+--     100 dan katta bo‘lsa 100 qilish
+-- RETURN:
+-- INT
+
+create function calculate_account_health_index (@account_id int) 
+returns int
+as begin 
+declare @health_index int;
+declare @status nvarchar(20);
+declare @fail_count int;
+declare @tx_count int;
+declare	@fraud_count int ;
+declare @balance decimal(12,2);
+
+if not exists (select 1 from accounts where id=@account_id) 
+return 0;
+
+
+select @status= status, @balance=balance,@fail_count=fail_count  from accounts where id =@account_id;
+
+select @tx_count=count(id) from transactions where from_account_id=@account_id or to_account_id=@account_id
+select @fraud_count=count(id) from fraud_alerts where account_id=@account_id;
+
+set @health_index=100;
+
+if @status in ('blocked', 'closed')
+set @health_index=@health_index-40;
+
+if @status in('frozen', 'dormant')
+set @health_index=@health_index-20;
+
+if @balance=0
+set @health_index=@health_index-10;
+
+set @health_index=@health_index-(@fail_count*5)
+
+if @fraud_count between 1 and 3
+set @health_index=@health_index-20;
+
+if @fraud_count between 4 and 5
+set @health_index=@health_index-40;
+
+if @fraud_count >5 
+set @health_index=@health_index-60;
+
+if @tx_count>0
+set @health_index=@health_index+10;
+
+
+if @health_index<0
+set @health_index=0;
+
+if @health_index >100
+set @health_index=100;
+
+return @health_index;
+end;
+
+
 
 -- TASK 45 — get_device_usage_count FUNCTION
 -- Создать FUNCTION:
 -- * количество использований устройства
+-- PARAMETER
+-- @customer_id INT
+-- @device NVARCHAR(MAX)
+-- DECLARE
+-- @usage_count INT
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Agar customer mavjud bo‘lmasa
+--    0 qaytarish
+-- 3. Customer qurilmasidan foydalanish sonini hisoblash
+--    login_history jadvalidan:
+--    - customer_id
+--    - device
+-- 4. Device qiymati bo‘yicha filter qilish
+-- 5. Agar device topilmasa
+--    0 qaytarish
+-- RETURN:
+-- INT
+create function get_device_usage_count(@customer_id int, @device nvarchar(max)) 
+returns int
+as begin 
+declare @usage_count int;
+
+if not exists (select 1 from customers where id=@customer_id)
+return 0;
+
+select @usage_count= count(id)  from login_history where customer_id =@customer_id and device=@device;
+
+if @usage_count is null 
+return 0;
+
+return @usage_count;
+end;
+
+
+
+
+
+
 
 -- TASK 46 — calculate_login_frequency FUNCTION
 -- Создать FUNCTION:
 -- * частота входов в систему
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @login_count INT
+-- @frequency NVARCHAR(20)
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Agar customer mavjud bo‘lmasa
+--    0 qaytarish
+-- 3. Customer login sonini hisoblash
+--    login_history jadvalidan:
+--    - customer_id
+-- 4. Login soniga qarab frequency aniqlash:
+--    0 ta login -> LOW
+--    1-10 ta login -> MEDIUM
+--    10 dan ko‘p login -> HIGH
+-- 5. Natijani qaytarish
+-- RETURN:
+-- NVARCHAR(20)
+create function calculate_login_frequency(@customer_id int)
+returns nvarchar(20) 
+as begin 
+declare @login_count int;
+declare @frequency nvarchar(20);
+
+if not exists (select 1 from customers where id =@customer_id)
+return 'not found customer';
+
+select @login_count=count(id) from login_history where customer_id =@customer_id;
+
+if @login_count =0
+set @frequency='low';
+else if @login_count between 1 and 10
+set @frequency ='medium';
+else if @login_count>10
+set @frequency='high';
+
+return @frequency;
+end;
+
+
+
+
 
 -- TASK 47 — get_customer_risk_level FUNCTION
 -- Создать FUNCTION:
 -- * уровень риска (LOW/MEDIUM/HIGH)
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @risk_score INT
+-- @risk_level NVARCHAR(20)
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Agar customer mavjud bo‘lmasa
+--    'NOT_FOUND' qaytarish
+-- 3. Customer risk score olish
+--    customers jadvalidan:
+--    - risk_score
+-- 4. Risk score qiymatiga qarab risk level aniqlash:
+--    0-30 ball  -> LOW
+--    31-70 ball -> MEDIUM
+--    71-100 ball -> HIGH
+-- 5. Natijani qaytarish
+-- RETURN:
+-- NVARCHAR(20)
+
+create function get_customer_risk_level (@customer_id int) 
+returns nvarchar(20) 
+as begin 
+declare @risk_score int;
+declare @risk_level nvarchar(20);
+
+if not exists (select 1 from customers where id=@customer_id) 
+return 'not found customer';
+
+select @risk_score=risk_score from customers where id =@customer_id;
+
+if @risk_score between 0 and 30
+set @risk_level ='low';
+else if @risk_score between 31 and 70 
+set @risk_level ='medium' ;
+else if @risk_score between 71 and 100
+set @risk_level='high';
+
+return @risk_level;
+end;
+
+select * from customers 
+
+
+
+
+
+
 
 -- TASK 48 — calculate_balance_growth_rate FUNCTION
 -- Создать FUNCTION:
 -- * темп роста баланса
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @current_balance DECIMAL(12,2)
+-- @previous_balance DECIMAL(12,2)
+-- @growth_rate DECIMAL(12,2)
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Agar account mavjud bo‘lmasa
+--    0 qaytarish
+-- 3. Hozirgi balance olish
+--    accounts jadvalidan:
+--    - balance
+-- 4. Oldingi balance ni aniqlash
+--    transactions jadvalidan:
+--    - account transactionlari asosida
+-- 5. Growth rate hisoblash:
+--    ((current_balance - previous_balance) / previous_balance) * 100
+-- 6. Agar previous_balance = 0 bo‘lsa
+--    0 qaytarish
+-- RETURN:
+-- DECIMAL(12,2)
+
+
+create function  calculate_balance_growth_rate(@account_id int)
+returns decimal(12,2)
+as begin 
+declare @current_balance decimal(12,2);
+declare @previos_balance decimal(12,2);
+declare @growth_rate decimal(12,2);
+
+if not exists (select 1 from accounts where id =@account_id)
+return 0;
+
+select @current_balance=balance from accounts where id=@account_id;
+select @previos_balance=@current_balance-coalesce(sum(case when from_account_id=@account_id then -amount when to_account_id=@account_id then amount else 0 end),0) from transactions where from_account_id=@account_id or to_account_id=@account_id;
+
+set @growth_rate=coalesce((@current_balance-@previos_balance)*1.0/nullif(@previos_balance,0)*100,0);
+return @growth_rate;
+end;
+
+
+
 
 -- TASK 49 — get_notification_read_rate FUNCTION
 -- Создать FUNCTION:
 -- * процент прочитанных уведомлений
+-- PARAMETER
+-- @customer_id INT
+-- DECLARE
+-- @total_notifications INT
+-- @read_notifications INT
+-- @read_rate DECIMAL(12,2)
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Agar customer mavjud bo‘lmasa
+--    0 qaytarish
+-- 3. Customer notification sonini hisoblash
+--    notifications jadvalidan:
+--    - customer_id
+-- 4. O‘qilgan notification sonini hisoblash
+--    notifications jadvalidan:
+--    - customer_id
+--    - is_read = 1
+-- 5. Agar notification mavjud bo‘lmasa
+--    0 qaytarish
+-- 6. Read rate hisoblash:
+--    (read_notifications / total_notifications) * 100
+-- 7. Natijani qaytarish
+-- RETURN:
+-- DECIMAL(12,2)
+
+create function get_notification_read_rate(@customer_id int)
+returns decimal(12,2)
+as begin 
+declare @total_notification int;
+declare @read_notification int;
+declare @read_rate decimal(12,2);
+
+if not exists (select 1 from customers where id=@customer_id)
+return 0;
+
+select @total_notification=count(id) from notifications where customer_id =@customer_id;
+
+select @read_notification=count(id) from notifications where customer_id =@customer_id and is_read=1;
+
+if @read_notification is null 
+return 0;
+
+set @read_rate=coalesce(@read_notification*1.0/nullif(@total_notification, 0) *100, 0);
+return @read_rate;
+end;
+
+
+
+
+
 
 -- TASK 50 — calculate_account_score FUNCTION
 -- Создать FUNCTION:
 -- * общий счет аккаунта
+-- PARAMETER
+-- @account_id INT
+-- DECLARE
+-- @account_score INT
+-- @balance DECIMAL(12,2)
+-- @transaction_count INT
+-- @fraud_count INT
+-- @status NVARCHAR(20)
+
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Agar account mavjud bo‘lmasa
+--    0 qaytarish
+-- 3. Account ma'lumotlarini olish:
+--    accounts jadvalidan:
+--    - balance
+--    - status
+-- 4. Account transaction sonini hisoblash
+--    transactions jadvalidan:
+--    - from_account_id
+--    - to_account_id
+-- 5. Fraud alert sonini hisoblash
+--    fraud_alerts jadvalidan:
+--    - account_id
+-- 6. Account score boshlang‘ich qiymatini berish
+--    100
+-- 7. Balance bo‘yicha score o‘zgartirish:
+--    balance = 0  -> -20
+--    balance > 0  -> +10
+-- 8. Status bo‘yicha score o‘zgartirish:
+--    blocked/closed -> -40
+--    frozen/dormant -> -20
+-- 9. Transaction soniga qarab:
+--    transaction > 10 -> +10
+-- 10. Fraud alert soniga qarab:
+--    1-3 ta -> -20
+--    4-5 ta -> -40
+--    5 dan ko‘p -> -60
+-- 11. Score 0 dan past bo‘lsa
+--    0 qilish
+-- 12. Score 100 dan katta bo‘lsa
+--    100 qilish
+-- RETURN:
+-- INT
+
+
+create function calculate_account_score(@account_id int)
+returns int
+as begin 
+declare @account_score int;
+declare @balance decimal(12,2);
+declare @tx_count int ;
+declare @fraud_count int;
+declare @status nvarchar(20);
+
+if not exists (select 1 from accounts where id=@account_id) 
+return 0;
+
+select @balance=balance, @status=status from accounts where id =@account_id;
+select @tx_count=count(id) from transactions where from_account_id=@account_id or to_account_id=@account_id;
+select @fraud_count=count(id) from fraud_alerts where account_id=@account_id;
+
+set @account_score=100;
+
+if @balance=0
+set @account_score=@account_score-20;
+else if @balance>0
+set @account_score=@account_score+10;
+
+if @status in('blocked', 'closed')
+set @account_score=@account_score-40
+else if @status in ('frozen', 'dormant')
+set @account_score=@account_score-20;
+
+if @tx_count>10
+set @account_score=@account_score+10;
+
+if @fraud_count between 1 and 3
+set @account_score=@account_score-20;
+else if @fraud_count between 4 and 5 
+set @account_score=@account_score-40;
+else if @fraud_count >5
+set @account_score=@account_score-60;
+
+
+if @account_score<0
+set @account_score=0
+else if @account_score>100
+set @account_score=100;
+
+return @account_score;
+end;
+
+
+
 
 
 -- ============================================================
