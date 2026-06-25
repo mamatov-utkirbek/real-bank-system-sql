@@ -1176,6 +1176,8 @@ set @health_index=@health_index+10;
 
 
 if @health_index<0
+
+
 set @health_index=0;
 
 if @health_index >100
@@ -1536,10 +1538,120 @@ end;
 -- TASK 51 — update_account_status PROCEDURE
 -- Создать PROCEDURE:
 -- * обновление статуса счета
+-- PARAMETER
+-- @account_id INT
+-- @new_status NVARCHAR(20)
+-- DECLARE
+-- @current_status NVARCHAR(20)
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Agar account mavjud bo‘lmasa
+--    THROW qaytarish
+-- 3. Yangi status validligini tekshirish:
+--    active
+--    frozen
+--    closed
+--    blocked
+--    dormant
+--    pending
+-- 4. Hozirgi statusni olish
+--    accounts jadvalidan
+-- 5. Agar yangi status hozirgi status bilan bir xil bo‘lsa
+--    THROW qaytarish
+-- 6. Transaction boshlash
+-- 7. Account statusini yangilash
+--    accounts jadvalida
+-- 8. update_at maydonini yangilash
+--    GETDATE()
+-- 9. Commit qilish
+-- 10. Xatolik bo‘lsa rollback qilish
+-- 11. THROW qaytarish
+
+create procedure update_account_status
+@account_id int, 
+@new_status nvarchar(20)
+as begin 
+declare @current_status nvarchar(20);
+begin try begin tran;
+
+if not exists(select 1 from accounts where id=@account_id)
+throw 50001, 'account not found', 1;
+
+if @new_status not in ('active',
+        'frozen',
+        'closed',
+        'blocked',
+        'dormant',
+        'pending')
+throw 50002, 'invailed account status',1;
+
+select @current_status=status from accounts where id=@account_id ;
+if @current_status=@new_status 
+throw 50003, 'status already assigned',1;
+
+update accounts set status=@new_status, update_at=getdate() where id =@account_id;
+
+commit;
+
+end try 
+begin catch 
+rollback;
+throw;
+end catch end;
+
+
+
+
 
 -- TASK 52 — add_fraud_alert PROCEDURE
 -- Создать PROCEDURE:
 -- * добавление fraud алерта
+-- PARAMETER
+-- @account_id INT
+-- @alert_type NVARCHAR(50)
+-- @severity INT
+-- DECLARE
+-- @customer_id INT
+-- 1. Account mavjudligini tekshirish
+--    accounts jadvalidan
+-- 2. Agar account mavjud bo‘lmasa
+--    THROW qaytarish
+-- 3. Account egasining customer_id sini olish
+--    accounts jadvalidan
+-- 4. Alert type validligini tekshirish
+--    fraud_alerts jadvalidagi mavjud type lar:
+--    suspicious_amount
+--    rapid_transactions
+--    multiple_failed_logins
+--    usual_location
+--    new_device_login
+--    vilocity_check
+--    blacklist_ip
+--    card_not_present
+--    hogh_risk_country
+--    account_takeover
+-- 5. Severity qiymatini tekshirish
+--    1-10 oralig‘ida bo‘lishi kerak
+-- 6. Transaction boshlash
+-- 7. fraud_alerts jadvaliga yangi alert qo‘shish:
+--    account_id
+--    alert_type
+--    severity
+-- 8. Commit qilish
+-- 9. Xatolik bo‘lsa rollback qilish
+-- 10. THROW qaytarish
+
+create procedure add_fraud_alert
+@account_id int,
+@alert_type nvarchar(50),
+@severty int
+as begin 
+declare @customer_id int;
+begin try begin tran;
+
+if not exists(select 1 from accounts where id =@account_id) 
+
+
 
 -- TASK 53 — log_failed_transaction PROCEDURE
 -- Создать PROCEDURE:
