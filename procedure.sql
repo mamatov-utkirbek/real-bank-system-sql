@@ -1,3 +1,4 @@
+go;
 create procedure update_account_status
 @account_id int, 
 @new_status nvarchar(20)
@@ -518,3 +519,70 @@ SELECT * from accounts
 order by id DESC
 
 
+go;
+
+create procedure close_dormant_accounts 
+@days INT
+as BEGIN
+DECLARE @closed_count int;
+begin try BEGIN TRANSACTION;
+
+if not exists (select 1 from accounts where [status]='active' and update_at< DATEADD(day, -@days, GETDATE()))
+throw 50001, 'no dortmant account found',1;
+
+update accounts set [status]='closed', update_at=GETDATE()
+where [status]='active' and update_at<dateadd(day,-@days, GETDATE());
+
+SELECT @closed_count=count(id) from accounts where [status]='closed' and update_at<GETDATE();
+
+set @closed_count=@@ROWCOUNT;
+COMMIT;
+
+SELECT @closed_count as closed_accounts ;
+
+end try 
+begin CATCH
+ROLLBACK;
+THROW;
+end catch
+end;
+
+select * from accounts order by id desc
+
+
+
+-- TASK 68 — reset_failed_count PROCEDURE
+-- Создать PROCEDURE:
+-- * сброс счетчика ошибок
+
+-- PARAMETER
+-- @customer_id INT
+
+-- DECLARE
+-- @failed_count INT
+
+-- 1. Transaction boshlash
+-- 2. Customer mavjudligini tekshirish
+-- 3. Customer login xatolari mavjudligini tekshirish
+-- 4. Hozirgi failed_count qiymatini olish
+-- 5. Agar failed_count = 0 bo‘lsa THROW qaytarish
+-- 6. failed_count qiymatini 0 qilish
+-- 7. Yangilangan vaqtni update qilish
+-- 8. Commit qilish
+-- 9. Xatolik bo‘lsa rollback qilish
+-- 10. THROW qaytarish
+
+go;
+
+create procedure reset_failed_count
+@customer_id INT
+as begin 
+declare @failed_count int;
+begin try begin tran;
+if not exists (select 1 from customers where id=@customer_id)
+throw 50001, 'not found customer',1;
+
+SELECT @failed_count=count(t.id) from transactions t join accounts a on t.from_account_id=a.id or t.to_account_id=a.id   where t.[status]='failed' and a.customer_id=@customer_id;
+
+if @failed_count = 0
+THROW 50002,'invalid failed',1;
