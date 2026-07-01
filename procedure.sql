@@ -306,27 +306,7 @@ ROLLBACK;
 THROW;
 end catch 
 end;
--- TASK 60 — record_login_history PROCEDURE
--- Создать PROCEDURE:
--- * запись истории входов
--- PARAMETER
--- @customer_id INT
--- @ip_address NVARCHAR(45)
--- @device NVARCHAR(MAX)
--- DECLARE
--- @login_count INT
--- 1. Transaction boshlash
--- 2. Customer mavjudligini tekshirish
---    customers jadvalidan
--- 3. Login ma'lumotlarini tekshirish
---    ip_address
---    device
--- 4. Login tarixini login_history jadvaliga qo‘shish
--- 5. Qo‘shilgan yozuv sonini olish
---    @@ROWCOUNT orqali
--- 6. Commit qilish
--- 7. Xatolik bo‘lsa rollback qilish
--- 8. THROW qaytarish
+
 go;
 
 create procedure record_login_history 
@@ -353,3 +333,79 @@ THROW;
 end CATCH 
 end;
 
+
+go;
+create procedure apply_interest_to_loans 
+@interest_rate DECIMAL(12,2)
+as BEGIN 
+DECLARE @interest_count int;
+begin try begin tran;
+
+if not exists (select 1 from loans where [status]='active')
+throw 50001,'not active loans found',1;
+
+SELECT @interest_count=count(id) from loans where [status]='active';
+
+update loans set amount=amount+(amount*@interest_rate/100) WHERE [status]='active';
+
+
+set @interest_count=@@ROWCOUNT;
+commit;
+end try 
+begin CATCH
+ROLLBACK;
+THROW;
+end CATCH
+end;
+
+
+go;
+
+create procedure calculate_daily_inserest 
+@daily_rate DECIMAL(12,2)
+as BEGIN
+declare  @interest_count int;
+begin try begin tran;
+
+if not EXISTS(SELECT 1 from loans where [status]='active')
+throw 50001, 'no active loans found',1;
+
+SELECT @interest_count=count(id) from loans where [status]='active';
+
+update loans set amount=amount+(amount*@daily_rate/100) where [status]='active';
+set @interest_count=@@ROWCOUNT;
+
+COMMIT;
+end try 
+begin CATCH
+ROLLBACK;
+THROW;
+end CATCH
+END;
+
+-- TASK 63 — generate_audit_report PROCEDURE
+-- Создать PROCEDURE:
+-- * генерация аудит отчета
+-- PARAMETER
+-- @customer_id INT
+-- @start_date DATETIME2
+-- @end_date DATETIME2
+-- DECLARE
+-- @audit_count INT
+-- 1. Customer mavjudligini tekshirish
+--    customers jadvalidan
+-- 2. Transaction boshlash
+-- 3. Audit loglarni aniqlash
+--    audit_logs jadvalidan
+--    created_at bo‘yicha
+-- 4. Audit yozuvlari sonini olish
+--    COUNT(id) orqali
+-- 5. Agar audit yozuvlari mavjud bo‘lmasa
+--    THROW qaytarish
+-- 6. Audit ma'lumotlarini chiqarish
+-- 7. Commit qilish
+-- 8. Xatolik bo‘lsa rollback qilish
+-- 9. THROW qaytarish
+
+
+create procedure generate_audit_report 
