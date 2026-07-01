@@ -383,29 +383,138 @@ THROW;
 end CATCH
 END;
 
--- TASK 63 — generate_audit_report PROCEDURE
--- Создать PROCEDURE:
--- * генерация аудит отчета
--- PARAMETER
--- @customer_id INT
--- @start_date DATETIME2
--- @end_date DATETIME2
--- DECLARE
--- @audit_count INT
--- 1. Customer mavjudligini tekshirish
---    customers jadvalidan
--- 2. Transaction boshlash
--- 3. Audit loglarni aniqlash
---    audit_logs jadvalidan
---    created_at bo‘yicha
--- 4. Audit yozuvlari sonini olish
---    COUNT(id) orqali
--- 5. Agar audit yozuvlari mavjud bo‘lmasa
---    THROW qaytarish
--- 6. Audit ma'lumotlarini chiqarish
--- 7. Commit qilish
--- 8. Xatolik bo‘lsa rollback qilish
--- 9. THROW qaytarish
+go;
 
 
 create procedure generate_audit_report 
+@customer_id int,
+@start_date DATETIME2,
+@end_date DATETIME2
+as begin
+declare @audit_count int;
+begin try begin tran;
+
+if not exists (select 1 from customers where id =@customer_id)
+throw 50001, 'customer not found',1;
+
+SELECT @audit_count=count(id) from audit_logs where customer_id=@customer_id and created_at BETWEEN @start_date and @end_date;
+if  @audit_count=0
+throw 50002,'audit not found',1;
+
+
+SELECT id, transaction_id, from_account_id, to_account_id, customer_id, amount, action_type, details, created_at from audit_logs where customer_id=@customer_id and created_at BETWEEN @start_date and @end_date;
+
+
+
+COMMIT;
+end try 
+begin catch 
+ROLLBACK;
+THROW;
+end CATCH
+end;
+
+
+go;
+
+create procedure update_balance 
+@account_id int,
+@new_balance decimal(12,2)
+as BEGIN
+declare @current_balance DECIMAL(12,2);
+begin try begin tran;
+
+if not exists (SELECT 1 from accounts where id=@account_id)
+THROW 50001,'account not found', 1;
+
+if not EXISTS(select 1 from accounts where [status]='active' and id=@account_id)
+THROW 50002, 'not found active account',1;
+
+if @new_balance<0
+THROW 50003, 'invalid balance',1;
+
+SELECT @current_balance=balance from accounts where id=@account_id;
+if @current_balance=@new_balance 
+THROW 50004, 'balance already set',1;
+
+update accounts set balance =@new_balance where id=@account_id;
+commit;
+end try 
+begin CATCH
+ROLLBACK;
+THROW;
+end catch 
+end;
+
+
+
+go;
+
+create procedure process_loan_payment 
+@loan_id int,
+@amount DECIMAL(12,2)
+AS BEGIN
+DECLARE @loan_amount DECIMAL(12,2);
+begin try begin tran;
+
+if not exists(select 1 from loans where id=@loan_id)
+THROW 50001, 'not found loan',1;
+
+if not exists (SELECT 1 from loans where [status]='active' and id=@loan_id)
+THROW 50002, 'not found active loan',1;
+
+if @amount<0
+THROW 50002, 'invalid payment amount', 1;
+
+SELECT @loan_amount=amount from loans where id=@loan_id;
+
+if @amount>@loan_amount 
+THROW 50003, 'payment amount exceeds loan amount',1;
+
+update loans set amount=amount-@amount where id =@loan_id;
+
+insert into loan_payments (loan_id, amount) values (@loan_id,@amount);
+
+update loans set [status]='closed' where id=@loan_id;
+
+commit;
+end try 
+begin CATCH
+ROLLBACK;
+THROW;
+end catch 
+ENd;
+
+
+
+go;
+
+create procedure create_account
+@customer_id int,
+@currency NVARCHAR(3)
+as begin 
+declare @account_id int;
+begin try BEGIN TRANSACTION;
+
+if not exists(SELECT 1 from customers where id =@customer_id)
+THROW 50001,'not found customer',1;
+
+insert into accounts  (customer_id, currency)values(@customer_id, @currency);
+
+set @account_id=SCOPE_IDENTITY();
+
+if @account_id is null
+throw 50002,'account creation failed',1;
+commit;
+end try 
+begin catch 
+ROLLBACK;
+THROW;
+end catch 
+end;
+
+exec create_account 5, 'usd'
+SELECT * from accounts 
+order by id DESC
+
+
