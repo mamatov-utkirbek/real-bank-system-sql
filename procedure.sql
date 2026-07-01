@@ -550,28 +550,6 @@ end;
 select * from accounts order by id desc
 
 
-
--- TASK 68 — reset_failed_count PROCEDURE
--- Создать PROCEDURE:
--- * сброс счетчика ошибок
-
--- PARAMETER
--- @customer_id INT
-
--- DECLARE
--- @failed_count INT
-
--- 1. Transaction boshlash
--- 2. Customer mavjudligini tekshirish
--- 3. Customer login xatolari mavjudligini tekshirish
--- 4. Hozirgi failed_count qiymatini olish
--- 5. Agar failed_count = 0 bo‘lsa THROW qaytarish
--- 6. failed_count qiymatini 0 qilish
--- 7. Yangilangan vaqtni update qilish
--- 8. Commit qilish
--- 9. Xatolik bo‘lsa rollback qilish
--- 10. THROW qaytarish
-
 go;
 
 create procedure reset_failed_count
@@ -585,4 +563,118 @@ throw 50001, 'not found customer',1;
 SELECT @failed_count=count(t.id) from transactions t join accounts a on t.from_account_id=a.id or t.to_account_id=a.id   where t.[status]='failed' and a.customer_id=@customer_id;
 
 if @failed_count = 0
-THROW 50002,'invalid failed',1;
+THROW 50002,'no failed transactions found',1;
+
+
+update transactions set [status]='success' where id in (select t.id from transactions t join accounts a on (t.from_account_id=a.id or t.to_account_id=a.id) and t.[status]='failed' and a.customer_id=@customer_id);
+
+
+commit;
+end try 
+begin CATCH
+ROLLBACK;
+THROW;
+end CATCH
+end;
+
+
+go;
+
+create procedure migrate_customer_data 
+@old_customer_id int,
+@new_customer_id INT
+as BEGIN
+declare @migrate_count int
+begin try begin tran;
+
+if not EXISTS(select 1 from customers where id =@old_customer_id)
+THROW 50001, 'not found old customer',1;
+
+if not EXISTS(select 1 from customers where id =@new_customer_id)
+THROW 50002, 'not found new customer',1;
+
+update accounts set customer_id=@new_customer_id where customer_id=@old_customer_id;
+
+set @migrate_count=@@ROWCOUNT;
+
+commit;   
+end TRY
+begin CATCH
+ROLLBACK;
+THROW;
+end catch 
+end;
+
+go;
+
+create procedure generate_risk_report
+@min_risk_score INT
+as begin  
+declare @risk_count int;
+begin try begin tran;
+
+if not EXISTS(SELECT 1 from customers where risk_score>=@min_risk_score )
+THROW 50002, 'not risk customers found', 1;
+
+select id, full_name, risk_score from customers where risk_score>@min_risk_score;
+
+SELECT @risk_count=count(*) from customers where risk_score>=@min_risk_score;
+
+commit;
+end try
+begin CATCH
+ROLLBACK;
+THROW;
+end CATCH
+end;
+
+
+
+go;
+
+create procedure cleanup_audit_logs 
+@days INT
+as begin 
+declare @deleted_count int;
+begin try begin tran;
+
+if not exists (select 1 from audit_logs where created_at<dateadd(day, -@days, GETDATE()))
+throw 50001,'not found day audit log',1;
+
+delete from audit_logs where created_at<DATEADD(day,-@days, GETDATE())
+
+set  @deleted_count=@@ROWCOUNT;
+
+SELECT @deleted_count as deleted_count
+COMMIT;
+end try 
+begin catch 
+ROLLBACK;
+THROW;
+end CATCH
+end;
+
+
+-- TASK 72 — import_customers PROCEDURE
+-- PARAMETER
+-- @file_path NVARCHAR(255)
+-- DECLARE
+-- @import_count INT
+-- 1. Import fayl mavjudligini tekshirish
+-- 2. Fayldagi customer ma'lumotlarini olish
+-- 3. Customer ma'lumotlarini tekshirish
+--    customers jadvalidagi mavjud ma'lumotlar bilan
+-- 4. Yangi customerlarni qo‘shish
+--    customers jadvaliga
+-- 5. Import qilingan customerlar sonini hisoblash
+-- 6. Commit qilish
+-- 7. Xatolik bo‘lsa rollback qilish
+-- 8. THROW qaytarish
+
+go;
+create procedure import_customers 
+@file_path NVARCHAR(255)
+as BEGIN
+declare @import_count int;
+begin try BEGIN TRANSACTION;
+
