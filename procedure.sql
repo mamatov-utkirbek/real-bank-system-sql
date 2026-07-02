@@ -678,3 +678,33 @@ as BEGIN
 declare @import_count int;
 begin try BEGIN TRANSACTION;
 
+if @file_path is null or @file_path=''
+throw 50001,'file path is empty',1;
+
+create table #temp_customers(
+        full_name NVARCHAR(255),
+        phone NVARCHAR(20),
+        email NVARCHAR(120),
+        address NVARCHAR(max)
+);
+
+
+BULK INSERT #temp_customers from 'C:\Users\Admin\Desktop\fintech\customers.csv' with (fieldterminator=';',rowterminator='\n',firstrow=2);
+if not exists (select 1 from #temp_customers)
+throw 50002,'file is empty', 1;
+
+INSERT into customers(full_name, phone, email,address)
+select full_name, phone, email, address from #temp_customers
+set @import_count=@@ROWCOUNT;
+
+COMMIT;
+end try 
+begin CATCH
+ROLLBACK;
+THROW;
+end CATCH
+end;
+
+
+exec import_customers 'C:\Users\Admin\Desktop\fintech\customers.csv'
+drop procedure import_customers 
