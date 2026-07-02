@@ -15,10 +15,6 @@ create table customers (
     CONSTRAINT uq_email_customer unique(email),
 );
 
-DELETE FROM customers;
-
-DBCC CHECKIDENT ('customers', RESEED, 0);
-
 select * from customers;
 
 go;
@@ -218,12 +214,21 @@ VALUES
 
 go;
 
-
+use lesson_1
 
 
 select c.customer_id, c.first_name+' '+c.last_name+' '+c.midlle_name full_name, FORMAT(j.login_time, 'HH-mm' ) login_time, format(j.logout_time, 'HH-mm') logout_time from customers c join jurnal j on j.customer_id=c.customer_id 
-where FORMAT(j.login_time, 'HH-mm' )>'08-35' and format(j.logout_time, 'HH-mm')<'18-00';
+where cast(j.login_time as time)>'08:35:00' and cast(j.logout_time as time)<'18:00:00';
 
 go;
 
-select c.last_name from customers c join jurnal
+select string_agg(c.last_name, ',') from customers c join jurnal j ON j.customer_id=c.customer_id where cast(j.login_time as time)>'08:35:00' and cast(j.logout_time as time)<'18:00:00';
+
+
+backup database lesson_1 to disk ='C:\backup\lesson_1_db.bak' with format, medianame= 'backup lesson_1_db', name='full backup';
+
+
+
+
+
+
